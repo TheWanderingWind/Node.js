@@ -1,3 +1,6 @@
+const fs = require('fs');
+const path = require('path');
+const { JSDOM } = require('jsdom');
 
 // Fetch html
 async function scrapeWebsite(url) {
@@ -15,7 +18,6 @@ async function scrapeWebsite(url) {
         }
     })
     .then(function (template) {
-        //console.log(template);
         return template
     })
     .catch(function (response) {
@@ -23,16 +25,11 @@ async function scrapeWebsite(url) {
         console.log(response.statusText);
     });
 
-    //console.log(tem)
-    
     const dom = new JSDOM(tem);
     return document = dom.window.document;
 }
 
 // Save new to file
-const fs = require('fs');
-const path = require('path');
-
 function saveNewsToFile(url, content, index) {
     const directory = path.join(__dirname, 'news');
     if (!fs.existsSync(directory)) {
@@ -50,12 +47,10 @@ function saveNewsToFile(url, content, index) {
   }
 
 
-const { JSDOM } = require('jsdom');
 // Main function
 async function main(max_news){
 
     var doc = await scrapeWebsite('https://suspilne.media/archive/')
-    //console.log(doc)
 
     items = doc.getElementsByClassName('c-article-card--small-headline')
 
@@ -67,22 +62,19 @@ async function main(max_news){
     for (let i = 0; i < max_news; i++) {
         var cont_text = []
 
-
         doc_i = await scrapeWebsite(items[i].href)
         cont_objs = doc_i.getElementsByClassName('pt-bd_wrp')[0].getElementsByClassName('align-left')
-
 
         for (let j=0; j < cont_objs.length; j++) {
             cont_text.push(cont_objs[j].textContent)
         }
         
         cont_text.pop()
-        //console.log(cont_text)
         
         await saveNewsToFile(items[i].href, cont_text, i)
     }
-
-    console.log("END")
 }
 
+// Setup main function
+// Check only first 30 news
 main(30)

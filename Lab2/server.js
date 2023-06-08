@@ -1,6 +1,7 @@
 const http = require('http');
 const fs = require('fs');
 
+// Create server
 const server = http.createServer((req, res) => {
   if (req.url === '/') {
     let html = '<!DOCTYPE html>\
@@ -16,7 +17,7 @@ const server = http.createServer((req, res) => {
     <body>\
     '
     
-    // Зчитуємо список з файлу
+    // Get all files path in directory
     const directoryPath = './Lab2/news';
     try {
       files = fs.readdirSync(directoryPath)
@@ -25,6 +26,7 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // Gen news list
     html += '<ul class="list-container">';
     let container;
     let i = 0
@@ -32,28 +34,30 @@ const server = http.createServer((req, res) => {
       container = '';
       i++
 
+      // Reading file of news
       try {
         data = fs.readFileSync(directoryPath+'/'+file, 'utf8')
       } catch (err) {
         console.error(`Error reading file ${file}:`, err);
       }
     
+      // Split lines and remove null-line
       lines = data.split('\n');
-
       lines = lines.filter(function(value) {
         return value !== '';
       });
 
       if (lines.length >= 2) {
-        const secondLine = lines.splice(1, 1)[0];
-        /*
-        if (secondLine == ''){
-          secondLine = 'Немає назви'
-        }
-        */
-        // Генеруємо HTML списо
-        container += `<li class="bg_${i%2}"><a href="#" class="clik-elem">${secondLine}</a><div class="hidden-element hidden">`;
-        
+        // first line is link to original site (have "Джерело: *link*")
+        const firstLine = lines.splice(0, 1)[0].split(": ");
+        // second line is name of news
+        const newsName = lines.splice(0, 1)[0];
+
+        // make name of news
+        container += `<li class="bg_${i%2}"><a href="#" class="clik-elem">${newsName}</a><div class="hidden-element hidden">`;
+        container += `<a href="${firstLine[1]}">${firstLine[0]}</a>`
+
+        // make content of news
         lines.forEach(line => {
           if (line != '') {
             container += `<p>${line}</p>`
@@ -69,6 +73,7 @@ const server = http.createServer((req, res) => {
     });
     html += '</ul>';
 
+    // Add script for hidden/show news
     html += '\
     <script>\r\
     document.querySelector(".list-container").addEventListener("click", function(event) {\r\
@@ -89,32 +94,29 @@ const server = http.createServer((req, res) => {
 
 const { spawn } = require('child_process');
 
-// Функція для запуску scraper.js
+// Function for setup scraper.js
 function runScraper() {
   console.log("Scrap site")
 
   const scraperProcess = spawn('node', ['./Lab2/scraper.js']);
-
-  scraperProcess.stdout.on('data', (data) => {
-    console.log(`Scraper output: ${data}`);
-  });
 
   scraperProcess.stderr.on('data', (data) => {
     console.error(`Scraper error: ${data}`);
   });
 
   scraperProcess.on('close', (code) => {
-    console.log(`Scraper process exited with code ${code}`);
+    console.log(`scraper.js exited with code ${code}`);
   });
 }
 
-// Запуск scraper.js на початку
+// Setup scraper.js before start the server
 runScraper();
 
+// Star server
 const port = 3000;
 server.listen(port, () => {
   console.log(`Server listening on port ${port}`);
 });
 
-// Запуск scraper.js кожну хвилину (60000 мс)
+// Setup scraper.js every minut (60000 ms)
 setInterval(runScraper, 60000);
