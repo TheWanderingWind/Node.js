@@ -5,32 +5,32 @@ const ejs = require('ejs');
 
 app.set('view engine', 'ejs');
 app.set('views', __dirname + '/views');
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-app.use(express.json()); // Обробка JSON-даних
-app.use(express.urlencoded({ extended: true })); // Обробка URL-кодованих даних
-// Налаштування сесій
+// We use session ID for identify clients
 app.use(session({
-  secret: 'secret-keyed', // Секретний ключ для підпису сесійного ідентифікатора
+  secret: 'secret-keyed',
   resave: false,
   saveUninitialized: false
 }));
 
-// Змінна для зберігання списку черг
+// Here we save all queues data
 let queues = [];
 
-// Обробка запиту головної сторінки
+// Hendler for main page
 app.get('/', (req, res) => {
   res.render('mainPage', { queues: queues });
 });
 
-// Запит для створення нової черги
+// Hendler for create new queue
 app.post('/create', (req, res) => {
-  // Отримання даних від клієнта
+  // Get client data
   const hostName = req.body.userName;
   const hostId = req.session.id;
   const queueName = `Черга ${hostName}`;
 
-  // Створення нового об'єкта черги
+  // create new queue
   const newQueue = {
     id: queues.length,
     queueName: queueName,
@@ -41,40 +41,42 @@ app.post('/create', (req, res) => {
     participantsOut: []
   };
 
-  // Додавання черги до списку черг
   queues.push(newQueue);
 
-  // Відправка відповіді з даними нової черги
+  // send data of new queue to Host
   res.send({data:newQueue});
 });
 
-// Запит для приєднання до черги
+// Event handler for join to queue
 app.get('/queue/:id', (req, res) => {
-  // Отримання ідентифікатора черги з URL-параметра
+  // Get id of queue
   const queueId = parseInt(req.params.id);
 
-  // Отримання ідентифікатора сесії
+  // Get data client
+
+  // Try get data of client session id
+  // If client is`t Host of this queue, it have not session id
   let sessionId
   if (!req.query.sessionId) {
     sessionId = req.session.id;
   } else {
     sessionId = req.query.sessionId;
   }  
-  // Отримання імені користувача з запиту
+
   const userName = req.query.name;
 
-  // Знаходження черги за її ідентифікатором
+  // try find queue by id
   const queue = queues.find(q => q.id === queueId);
-  // Перевірка, чи черга існує
   if (!queue) {
     res.status(404).send('Queue not found');
     return;
   }
 
-  // Перевірка, чи користувач є хостом черги
+  // Check if client is Host
   const isHost = queue.hostId === sessionId;
   
-  // Перевірка, чи користувач є наступним в черзі
+  // Check if client is next
+  // (if client is next, then it will not be in the general list)
   let isNext = false
   if (!!queue.next) {
     isNext = queue.next.sessionId === sessionId;
@@ -82,12 +84,12 @@ app.get('/queue/:id', (req, res) => {
 
   const isOut = queue.participantsOut.some(p => p.sessionId === sessionId);
 
+  // Check if client in queue
   let isParticipantJoined = false;
   if (!isHost && !isNext && !isOut) {
-    // Перевірка, чи учасник уже приєднаний до черги
     isParticipantJoined = queue.participants.some(p => p.sessionId === sessionId);
 
-    // Якщо учасник не приєднаний, додати його до черги
+    // if clientn not in queue, then add it to queue
     if (!isParticipantJoined) {
       const newParticipant = {
         sessionId: sessionId,
@@ -98,9 +100,11 @@ app.get('/queue/:id', (req, res) => {
     }
   }
 
+  // Find client in participant list
+  // (for Host and 'Next' will be null)
   const participant = queue.participants.find(q => q.sessionId === sessionId);
 
-  // Формування даних для відправки на сторінку черги
+  // Create general data (for any client)
   let data = {
     isHost: isHost,
     isNext: isNext,
@@ -108,26 +112,27 @@ app.get('/queue/:id', (req, res) => {
     queueName: queue.queueName,
     queueId: queue.id,
     hostName: queue.hostName,
-    sessionId: sessionId,
+    sessionId: sessionId, 
   };
+
   if (isHost) {
+    // Data only for Host
     data.participants = queue.participants;
   } else {
     if (isNext) {
+      // Data only for 'Next'
       data.position = queue.next.position;
       data.clientName = queue.next.name;
     } else {
+      // Data for all other clients
       data.position = participant.position;
       data.clientName = participant.name;
     }
   }
-
-  //console.log(`(/queue/${queue.id}) Send Data: `, data)
-  // Відправка сторінки queuePage.ejs з даними черги та користувача
   res.render('queuePage', data);
 });
 
-// Запит для оновлення списку черг
+// Event handler update main page
 app.post('/update', (req, res) => {
   const data = {
     queues: queues,
@@ -135,12 +140,12 @@ app.post('/update', (req, res) => {
   res.json(data);
 });
 
-// Запит для оновлення черги
+// Event handler update queue page
 app.post('/queue/:id/update', (req, res) => {
-  // Отримання ідентифікатора черги з URL-параметра
+  // Get id of queue
   const queueId = parseInt(req.params.id);
 
-  // Отримання ідентифікатора сесії
+  // Get client data
   let sessionId
   if (!req.body.sessionId) {
     sessionId = req.session.id;
@@ -148,40 +153,32 @@ app.post('/queue/:id/update', (req, res) => {
     sessionId = req.body.sessionId;
   }  
 
-  // Знаходження черги за її ідентифікатором
+  // try find queue
   const queue = queues.find(q => q.id === queueId);
-
-  // Перевірка, чи черга існує
   if (!queue) {
     res.status(404).send('Queue not found');
     return;
   }
 
-  // Перевірка, чи користувач є хостом черги
+  // Check if client is Host
   const isHost = queue.hostId === sessionId;
 
-  // Перевірка, чи користувач є наступним в черзі
+  // Check if client is 'Next'
   let isNext = false
   if (!!queue.next) {
     isNext = queue.next.sessionId === sessionId;
   }
 
+  // Check if client is out of queue
   let isOut = false;
   if (queue.participantsOut.length > 0) {
-    //console.log("queue.Out:", queue.participantsOut)
-    //console.log("sessionId:", sessionId)
     isOut = queue.participantsOut.some(p => p.sessionId == sessionId);
-    //console.log("isOut:", isOut)
   }
 
-  // Перевірка, чи користувач є учасником черги
+  // Find client in general list
   const participant = queue.participants.find(p => p.sessionId === sessionId);
-  //console.log("queue: ", queue)
-  //console.log("participant: ", participant)
-  //console.log("isHost: ", isHost)
-  //console.log("sessionId: ", sessionId)
 
-  // Формування даних для відправки на сторінку черги
+  // Create general data
   let data = {
     isHost: isHost,
     isNext: isNext,
@@ -192,101 +189,92 @@ app.post('/queue/:id/update', (req, res) => {
     sessionId: sessionId,
   };
   if (isHost) {
+    // Data only for Host
     data.participants = queue.participants;
     data.next = queue.next;
   } else {
     if (isNext && !isOut) {
+      // Data only for 'Next'
       data.position = queue.next.position;
       data.clientName = queue.next.name;
     } else if (!isOut) {
+    // Data only for other clients
       data.position = participant.position;
       data.clientName = participant.name;
     }
   }
-
-  //console.log(`(/queue/${queue.id}/update) Send Data: `, data)
-
   res.json(data);
 });
 
-app.post('/queue/:id/next', (req, res) => {
-  // Отримання ідентифікатора черги з URL-параметра
+// Event handler call next participant
+app.post('/queue/:id/next', (req, res) => { 
+  // Get id of queue
   const queueId = parseInt(req.params.id);
 
-  // Знаходження черги за її ідентифікатором
+  // Find queue
   const queue = queues.find(q => q.id === queueId);
-
-  // Перевірка, чи черга існує
   if (!queue) {
     res.status(404).send('Queue not found');
-    //console.log("out 404");
     return;
   }
 
-  //console.log("client id:", req.body.sessionId);
-  //console.log("host id:", queue.hostId);
-
-  // Перевірка, чи користувач є хостом черги
+  // Check if client is Host
   const isHost = queue.hostId === req.body.sessionId;
-  //console.log("isHost:", isHost);
   if (!isHost) {
     res.status(403).send('Only the host can perform this action');
-    //console.log("out 403");
     return;
   }
 
-  // Перевірка, чи є учасники в черзі
+  // Check if general list have participants
   if (queue.participants.length === 0) {
     if (!!queue.next) {
       queue.participantsOut.push(queue.next);
     }
     queue.next = null;
     res.json({});
-    //console.log("out null");
     return;
   }
 
+  // Decrease participants positions
   for (let i=0; i < queue.participants.length; i++) {
     queue.participants[i].position -= 1;
   }
 
+  // if next is't null, push this participant to list of out
   if (!!queue.next) {
     queue.participantsOut.push(queue.next);
   }
-  // Видалення першого учасника зі списку та вставлення його у поле 'next'
+
+  // Push from general list to next first participant in list
   queue.next = queue.participants.shift();
-  //console.log('next', queue.next)
 
   res.json({});
-  //console.log("out 0");
 });
 
-// Маршрут для зміни назви черги
+// Event handler for change queue name
 app.post('/queue/:id/change', (req, res) => {
+  // Get queue id
   const queueId = parseInt(req.params.id);
 
-  // Отримання ідентифікатора сесії та нової назви черги з тіла запиту
+  // Get session id
   const sessionId = req.body.sessionId;
+  // New name
   const newQueueName = req.body.queueName;
-
+  // Find queue
   const queue = queues.find(p => p.id === queueId);
 
-  // Здійснення перевірки, чи користувач є хостом
-  const isHost = queue.hostId === sessionId; // Потрібно використовувати вашу власну логіку для отримання даних черги
+  // Check if client is Host
+  const isHost = queue.hostId === sessionId;
 
   if (isHost) {
-    // Зміна назви черги
-    queue.queueName = newQueueName; // Потрібно використовувати вашу власну логіку для зміни назви черги
-
-    // Відсилання успішної відповіді
+    queue.queueName = newQueueName;
     res.status(200).end();
   } else {
-    // Відсилання помилки доступу
     res.status(403).end();
   }
 });
 
-// Запуск сервера
+// Setup server
 app.listen(3000, () => {
   console.log('Сервер запущений на порті 3000');
 });

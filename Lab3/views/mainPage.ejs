@@ -4,78 +4,58 @@
   <title>Список черг</title>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <style>
-    .min-size {
-      min-height: 10px
-    }
-
+    /* For header */
     .header-wrapper {
-    background-color: #f2f3c7; /* Задаємо фоновий колір контейнера */
-    max-width: 800px; /* Максимальна ширина контейнера */
+    background-color: #f2f3c7; 
+    max-width: 800px;
     margin: 0 auto;
-    padding: 20px; /* Відступи зовнішнього контейнера */
-    border-radius: 10px; /* закруглені кути */
+    padding: 20px;
+    border-radius: 10px;
     }
 
-    .header {
-    width: 90%; /* Ширина контейнера */
-    max-width: 800px; /* Максимальна ширина контейнера */
-    margin: 0 auto; /* Центруємо контейнер по горизонталі */
-    padding: 10px; /* Відступи всередині контейнера */
-    }
-
-    /* Стилі для елементів, що відображаються в центрі */
+    /* For middle part */
     .mid {
       display: flex;
       justify-content: center;
       align-items: center;
       width: 90%;
-      max-width: 800px; /* Максимальна ширина контейнера */
+      max-width: 800px;
       margin: 0 auto;
-      border-radius: 10px; /* закруглені кути */
-      background-color: #E0F2F1; /* блідо-блакитний фон */
+      border-radius: 10px;
+      background-color: #E0F2F1;
     }
 
-    .mid-second {
-      display: block;
-      justify-content: flex-start;
-      width: 90%;
-      max-width: 800px; /* Максимальна ширина контейнера */
-      margin: 0 auto;
-      padding: 50;
-      border-radius: 10px; /* закруглені кути */
-      background-color: #E0F2F1; /* блідо-блакитний фон */
-    }
-
-    /* Стилі для елементів лівої сторони сторінки */
+    /* For list */
     .list {
       display: flex;
       justify-content: flex-start;
       width: 90%;
-      max-width: 800px; /* Максимальна ширина контейнера */
+      max-width: 800px;
       margin: 0 auto;
-      background-color: #F5F5F5; /* світло-сірий фон */
-      border-radius: 10px; /* закруглені кути */
+      background-color: #F5F5F5;
+      border-radius: 10px;
     }
 
-    /* Стилі для елементів зліва контейнера */
+    /* Fist variation  list element */
     .li-0 {
-      background-color: #C8E6C9; /* світло-зелений фон */
-      border-radius: 5px; /* закруглені кути */
+      background-color: #C8E6C9;
+      border-radius: 5px;
       min-width: 300px
     }
+
+    /* Second variation list element */
     .li-1 {
-      background-color: #a5dfa7; /* світло-зелений фон */
-      border-radius: 5px; /* закруглені кути */
+      background-color: #a5dfa7;
+      border-radius: 5px;
       min-width: 300px
     }
 
   </style>
   <script>
     $(document).ready(function() {
-      // Заблокувати кнопку створення черги, поки поле з іменем не заповнене
-      $('#createQueueBtn').prop('disabled', true);
 
-      // Перевірка, чи поле з іменем не пусте
+      // Block button for create new queu when name is null
+      $('#createQueueBtn').prop('disabled', true);
       $('#clientName').on('input', function() {
         if ($(this).val() !== '') {
           $('#createQueueBtn').prop('disabled', false);
@@ -84,29 +64,29 @@
         }
       });
 
-      // Обробник події для кнопки створення нової черги
+      // Event handler for create new queue
       $('#createQueueBtn').click(function() {
         const clientName = $('#clientName').val();
 
-        // Створення нової черги
+        // Send post for create queue
         $.ajax({
           url: '/create',
           method: 'POST',
           data: { userName: clientName },
           success: function(response) {
-            console.log(response);
-            const queueId = response.data.id;            
+            const queueId = response.data.id;
             const queueUrl = '/queue/' + queueId;
 
+            // Data for correct join to queue
             const queryString = Object.entries({
               name: clientName,
+              // Every new tab have new session id, so we shoud save this id and send it
               sessionId: response.data.hostId
             })
             .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
             .join('&');
 
-            // Приєднання до черги
-            // Відкриття сторінки черги у новій вкладці
+            // Open new queue in new tab
             window.open(`${queueUrl}?${queryString}`, '_blank');
           },
           error: function(jqXHR, textStatus, errorThrown) {
@@ -115,52 +95,60 @@
         });
       });
 
-      // Обробник події для елементів списку черг
-      $('.queue-item').click(function() {
+      // Event hendler for join to queue
+      function joinQueue() {
+        // Block if name is null
         const clientName = $('#clientName').val();
         if (clientName === '') {
           alert("Введіть своє ім'я!");
           return;
         }
 
+        // Get id of queue
         const queueId = $(this).data('queue-id');
 
+        // Data for correct join to queue
         const queryString = Object.entries({
               name: clientName,
             })
             .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
             .join('&');
 
+        // Open queue in new tab
         window.open(`/queue/${queueId}?${queryString}`, '_blank');
-      });
+      };
 
+      // Bind event hendlers for first list element
+      $('.queue-item').click(joinQueue);
+
+      // Update list info
       function updateList() {
-        console.log('update')
         $.ajax({
           url: '/update',
           method: 'POST',
           success: function(response) {
-            console.log(response)
-            //update list
+            // remove all old list element and create new
             const list = document.getElementById('listUl')
             list.innerHTML = '';
-            
-            console.log(response.queues.length)
 
             for (let i = 0; i < response.queues.length; i++) {
-              const listElement = document.createElement('li');
+              let listElement = document.createElement('li');
               listElement.textContent = `${response.queues[i].queueName}`;
 
-              listElement.dataset.queueШtem = response.queues[i].id;
+              listElement.dataset.queueId = response.queues[i].id;
+
               if (i % 2 === 0) {
                 listElement.classList.add('li-0');
               } else {
                 listElement.classList.add('li-1');
               }
 
+              listElement.addEventListener('click', joinQueue);
+
               list.appendChild(listElement);
               list.appendChild(listElement);
             }
+            // End of creation new list element
           },
           error: function(jqXHR, textStatus, errorThrown) {
             console.log('Error:', errorThrown);
@@ -169,7 +157,7 @@
       }
 
       updateList();
-      // Періодична відправка запитів
+      // Updating info every 10 second
       setInterval(function() {
         updateList();
       }, 10000);

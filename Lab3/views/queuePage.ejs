@@ -10,63 +10,60 @@
     }
 
     .header-wrapper {
-    background-color: #f2f3c7; /* Задаємо фоновий колір контейнера */
-    max-width: 800px; /* Максимальна ширина контейнера */
+    background-color: #f2f3c7;
+    max-width: 800px;
     margin: 0 auto;
-    padding: 20px; /* Відступи зовнішнього контейнера */
-    border-radius: 10px; /* закруглені кути */
+    padding: 20px;
+    border-radius: 10px;
     }
 
     .header {
-    width: 90%; /* Ширина контейнера */
-    max-width: 800px; /* Максимальна ширина контейнера */
-    margin: 0 auto; /* Центруємо контейнер по горизонталі */
-    padding: 10px; /* Відступи всередині контейнера */
+    width: 90%;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 10px;
     }
 
-    /* Стилі для елементів, що відображаються в центрі */
     .mid {
       display: flex;
       justify-content: center;
       align-items: center;
       width: 90%;
-      max-width: 800px; /* Максимальна ширина контейнера */
+      max-width: 800px;
       margin: 0 auto;
-      border-radius: 10px; /* закруглені кути */
-      background-color: #E0F2F1; /* блідо-блакитний фон */
+      border-radius: 10px;
+      background-color: #E0F2F1;
     }
 
     .mid-second {
       display: block;
       justify-content: flex-start;
       width: 90%;
-      max-width: 800px; /* Максимальна ширина контейнера */
+      max-width: 800px;
       margin: 0 auto;
       padding: 50;
-      border-radius: 10px; /* закруглені кути */
-      background-color: #E0F2F1; /* блідо-блакитний фон */
+      border-radius: 10px;
+      background-color: #E0F2F1;
     }
 
-    /* Стилі для елементів лівої сторони сторінки */
     .list {
       display: flex;
       justify-content: flex-start;
       width: 90%;
-      max-width: 800px; /* Максимальна ширина контейнера */
+      max-width: 800px;
       margin: 0 auto;
-      background-color: #F5F5F5; /* світло-сірий фон */
-      border-radius: 10px; /* закруглені кути */
+      background-color: #F5F5F5;
+      border-radius: 10px;
     }
 
-    /* Стилі для елементів зліва контейнера */
     .li-0 {
-      background-color: #C8E6C9; /* світло-зелений фон */
-      border-radius: 5px; /* закруглені кути */
+      background-color: #C8E6C9;
+      border-radius: 5px;
       min-width: 300px
     }
     .li-1 {
-      background-color: #a5dfa7; /* світло-зелений фон */
-      border-radius: 5px; /* закруглені кути */
+      background-color: #a5dfa7;
+      border-radius: 5px;
       min-width: 300px
     }
 
@@ -123,9 +120,7 @@
   </div>
 
   <script>
-    // Інтервал для періодичної відправки запитів (у мілісекундах)
-    const interval = 20000; // Наприклад, кожні 5 секунд
-    //let data = ;
+    // Geting diferent data, if client is host
     const isHost = <%= isHost %>;
     const queueId = <%= queueId %>;
     let queueName = `<%= queueName %>`;
@@ -136,36 +131,36 @@
       let participants = [];
     <% } %>
 
-    // Функція для відправки запиту та обробки відповіді
+    // Event handler for update info
     function sendUpdateRequest() {
-      // Відправка запиту
       $.ajax({
         url: `/queue/${queueId}/update`,
         method: 'POST',
         data: { sessionId: sessionId },
         success: function(inputData) {
-          // Обробка відповіді
-          console.log('Отримано відповідь:', inputData);
-          queueName = inputData.queueName;
+          // Update info:
 
-          // Оновлення заголовка черги
+          // Update queue name
+          queueName = inputData.queueName;
           document.querySelector('#h-title').textContent = inputData.queueName;
 
           if (isHost) {
-            // Оновлення полів для хоста
-            participants = inputData.participants
+            // Updating info for Host
 
+            // Get and save participant list
+            participants = inputData.participants
             document.querySelector('#queueNameInput').value = inputData.queueName;
             
+            // Updating next particiant info
             const nextParticipantLabel = document.querySelector('#nextParticipantLab');
-            console.log('next: ', inputData.next)
             if (!inputData.next) {
               nextParticipantLabel.textContent = 
               `Немає наступного учасника (ви або ще нікого не викликали, або учасників більше нема)`;
             } else {
               nextParticipantLabel.textContent = `Наступний учасник: ${inputData.next.name}`;
             }
-            // Оновлення списку учасників
+
+            // Updation particiant list
             const participantsList = document.querySelector('#participantsList');
             participantsList.innerHTML = '';
 
@@ -182,10 +177,13 @@
 
               participantsList.appendChild(participantItem);
             }
+            // End of updating info for Host
           } else if (inputData.isOut) {
+            // Updating if client is out of queue
             document.querySelector('#position').textContent = 
               `Ви вже були викликані і ваша черга минула!`;
           } else {
+            // Updating for client
             if (inputData.position > 1) {
               document.querySelector('#position').textContent = 
               `Ваша позиція: ${inputData.position}`;
@@ -201,56 +199,57 @@
         },
         error: function(error) {
           console.log('Виникла помилка при відправці запиту:', error);
-          // Ваш код для обробки помилки тут
         }
       });
     }
+    // End of updation info
 
-    // Відправка першого запиту
+    // First updating
     sendUpdateRequest();
 
-    // Періодична відправка запитів
+    // Update every 10 seconds
     setInterval(function() {
       sendUpdateRequest();
-    }, interval);
-
+    }, 10000);
+ 
     <% if (isHost) { %>
-    // Додаємо обробник події 'click' до кнопки
-    document.getElementById('nextParticipantBtn').addEventListener('click', () => {
-      // Відправляємо запит
-      $.ajax({
-        url: `/queue/${queueId}/next`,
-        method: 'POST',
-        data: { sessionId: sessionId },
-        success: (data) => {
-          // Виконуємо функцію sendUpdateRequest()
-          sendUpdateRequest();
-        },
-        error: (xhr, status, error) => {
-          console.error('Помилка:', error);
-        }
+      // Add this handlers only if client is Host
+      
+      // Event handler for call next participant
+      document.getElementById('nextParticipantBtn').addEventListener('click', () => {
+        // just send post, server do all himself
+        $.ajax({
+          url: `/queue/${queueId}/next`,
+          method: 'POST',
+          data: { sessionId: sessionId },
+          success: (data) => {
+            // after send post, update info
+            sendUpdateRequest();
+          },
+          error: (xhr, status, error) => {
+            console.error('Помилка:', error);
+          }
+        });
       });
-    });
 
-    document.getElementById('updateQueueNameBtn').addEventListener('click', function() {
-      // Виклик функції для зміни назви черги через Ajax
-      $.ajax({
-        url: `/queue/${queueId}/change`,
-        type: 'POST',
-        data: {
-          sessionId: sessionId,
-          queueName: document.getElementById('queueNameInput').value
-        },
-        success: function() {
-          // Оновлення змісту сторінки після успішної зміни назви черги
-          sendUpdateRequest();
-        },
-        error: function() {
-          // Обробка помилки запиту
-          console.log('Помилка запиту на зміну назви черги.');
-        }
+      // Event handler for change queue name
+      document.getElementById('updateQueueNameBtn').addEventListener('click', function() {
+        $.ajax({
+          url: `/queue/${queueId}/change`,
+          type: 'POST',
+          data: {
+            sessionId: sessionId,
+            queueName: document.getElementById('queueNameInput').value
+          },
+          success: function() {
+            // Update info
+            sendUpdateRequest();
+          },
+          error: function() {
+            console.log('Помилка запиту на зміну назви черги.');
+          }
+        });
       });
-    });
     <% } %>
 
   </script>
