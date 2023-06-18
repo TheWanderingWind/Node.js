@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <title><%= queueName %></title>
+  <style>
+    .min-size {
+      min-height: 10px
+    }
+
+    .header-wrapper {
+    background-color: #f2f3c7; /* Задаємо фоновий колір контейнера */
+    max-width: 800px; /* Максимальна ширина контейнера */
+    margin: 0 auto;
+    padding: 20px; /* Відступи зовнішнього контейнера */
+    border-radius: 10px; /* закруглені кути */
+    }
+
+    .header {
+    width: 90%; /* Ширина контейнера */
+    max-width: 800px; /* Максимальна ширина контейнера */
+    margin: 0 auto; /* Центруємо контейнер по горизонталі */
+    padding: 10px; /* Відступи всередині контейнера */
+    }
+
+    /* Стилі для елементів, що відображаються в центрі */
+    .mid {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 90%;
+      max-width: 800px; /* Максимальна ширина контейнера */
+      margin: 0 auto;
+      border-radius: 10px; /* закруглені кути */
+      background-color: #E0F2F1; /* блідо-блакитний фон */
+    }
+
+    .mid-second {
+      display: block;
+      justify-content: flex-start;
+      width: 90%;
+      max-width: 800px; /* Максимальна ширина контейнера */
+      margin: 0 auto;
+      padding: 50;
+      border-radius: 10px; /* закруглені кути */
+      background-color: #E0F2F1; /* блідо-блакитний фон */
+    }
+
+    /* Стилі для елементів лівої сторони сторінки */
+    .list {
+      display: flex;
+      justify-content: flex-start;
+      width: 90%;
+      max-width: 800px; /* Максимальна ширина контейнера */
+      margin: 0 auto;
+      background-color: #F5F5F5; /* світло-сірий фон */
+      border-radius: 10px; /* закруглені кути */
+    }
+
+    /* Стилі для елементів зліва контейнера */
+    .li-0 {
+      background-color: #C8E6C9; /* світло-зелений фон */
+      border-radius: 5px; /* закруглені кути */
+      min-width: 300px
+    }
+    .li-1 {
+      background-color: #a5dfa7; /* світло-зелений фон */
+      border-radius: 5px; /* закруглені кути */
+      min-width: 300px
+    }
+
+  </style>
+</head>
+<body class="">
+  <div id="container">
+    <div class="header-wrapper">
+        <div class="header">
+    <h2>Ви в черзі:</h2>
+    <h1 id="h-title"><%= queueName %></h1>
+    
+    <% if (isHost) { %>
+      </div></div>
+      <div class="min-size"></div>
+      <div class="mid">
+        <label for="queueNameInput">Змінити назву черги:</label>
+        <input type="text" id="queueNameInput" value="<%= queueName %>">
+        <button id="updateQueueNameBtn">Оновити назву</button>
+      </div>
+      <div class="min-size"></div>
+      <div class="mid">
+        <label id="nextParticipantLab" for="nextParticipantBtn">
+          <% if (typeof next === 'undefined') { %> 
+            Немає наступного учасника (ви або ще нікого не викликали, або учасників більше нема)
+          <% } else { %>
+            Наступний учасник: <%= next.name %>
+          <% } %>
+        </label>
+        <button id="nextParticipantBtn">Наступний</button>
+      </div>
+      <div class="min-size"></div>
+      <div class="list">
+        <h2>Учасники:</h2>
+        <ul id="participantsList">
+          <% for (let i=0; i < participants.length; i++) { %>
+            <% if (i%2 == 0) { %>
+              <li class="li-0"><%= participants[i].name %> (позиція: <%= participants[i].position %>)</li>
+            <% } else { %>
+              <li class="li-1"><%= participants[i].name %> (позиція: <%= participants[i].position %>)</li>
+            <% } %>
+          <% } %>
+        </ul>
+      </div>
+    <% } else { %>
+      <p id="hostName">Ім'я власника: <%= hostName %></p>
+      </div></div>
+      <div class="min-size"></div>
+      <div class="mid-second">
+        <p id="clientName">Ваше ім'я: <%= clientName %></p>
+        <p id="position">Ваша позиція: <%= position %></p>
+      </div>
+    <% } %>
+  </div>
+
+  <script>
+    // Інтервал для періодичної відправки запитів (у мілісекундах)
+    const interval = 20000; // Наприклад, кожні 5 секунд
+    //let data = ;
+    const isHost = <%= isHost %>;
+    const queueId = <%= queueId %>;
+    let queueName = `<%= queueName %>`;
+    const sessionId = `<%= sessionId %>`;
+    <% if (isHost) { %>
+      let participants = [<%= participants %>];
+    <% } else { %>
+      let participants = [];
+    <% } %>
+
+    // Функція для відправки запиту та обробки відповіді
+    function sendUpdateRequest() {
+      // Відправка запиту
+      $.ajax({
+        url: `/queue/${queueId}/update`,
+        method: 'POST',
+        data: { sessionId: sessionId },
+        success: function(inputData) {
+          // Обробка відповіді
+          console.log('Отримано відповідь:', inputData);
+          queueName = inputData.queueName;
+
+          // Оновлення заголовка черги
+          document.querySelector('#h-title').textContent = inputData.queueName;
+
+          if (isHost) {
+            // Оновлення полів для хоста
+            participants = inputData.participants
+
+            document.querySelector('#queueNameInput').value = inputData.queueName;
+            
+            const nextParticipantLabel = document.querySelector('#nextParticipantLab');
+            console.log('next: ', inputData.next)
+            if (!inputData.next) {
+              nextParticipantLabel.textContent = 
+              `Немає наступного учасника (ви або ще нікого не викликали, або учасників більше нема)`;
+            } else {
+              nextParticipantLabel.textContent = `Наступний учасник: ${inputData.next.name}`;
+            }
+            // Оновлення списку учасників
+            const participantsList = document.querySelector('#participantsList');
+            participantsList.innerHTML = '';
+
+            for (let i = 0; i < participants.length; i++) {
+              const participant = participants[i];
+              const participantItem = document.createElement('li');
+              participantItem.textContent = `${participant.name} (позиція: ${participant.position})`;
+
+              if (i % 2 === 0) {
+                participantItem.classList.add('li-0');
+              } else {
+                participantItem.classList.add('li-1');
+              }
+
+              participantsList.appendChild(participantItem);
+            }
+          } else if (inputData.isOut) {
+            document.querySelector('#position').textContent = 
+              `Ви вже були викликані і ваша черга минула!`;
+          } else {
+            if (inputData.position > 1) {
+              document.querySelector('#position').textContent = 
+              `Ваша позиція: ${inputData.position}`;
+            } else if (inputData.position == 1) {
+              document.querySelector('#position').textContent = 
+              `Ваша позиція: ${inputData.position} (Увага! ви можете бути наступним!)`;
+            } else if (inputData.position == 0) {
+              document.querySelector('#position').textContent = 
+              `Вас викликали!`;
+            } 
+          }
+
+        },
+        error: function(error) {
+          console.log('Виникла помилка при відправці запиту:', error);
+          // Ваш код для обробки помилки тут
+        }
+      });
+    }
+
+    // Відправка першого запиту
+    sendUpdateRequest();
+
+    // Періодична відправка запитів
+    setInterval(function() {
+      sendUpdateRequest();
+    }, interval);
+
+    <% if (isHost) { %>
+    // Додаємо обробник події 'click' до кнопки
+    document.getElementById('nextParticipantBtn').addEventListener('click', () => {
+      // Відправляємо запит
+      $.ajax({
+        url: `/queue/${queueId}/next`,
+        method: 'POST',
+        data: { sessionId: sessionId },
+        success: (data) => {
+          // Виконуємо функцію sendUpdateRequest()
+          sendUpdateRequest();
+        },
+        error: (xhr, status, error) => {
+          console.error('Помилка:', error);
+        }
+      });
+    });
+
+    document.getElementById('updateQueueNameBtn').addEventListener('click', function() {
+      // Виклик функції для зміни назви черги через Ajax
+      $.ajax({
+        url: `/queue/${queueId}/change`,
+        type: 'POST',
+        data: {
+          sessionId: sessionId,
+          queueName: document.getElementById('queueNameInput').value
+        },
+        success: function() {
+          // Оновлення змісту сторінки після успішної зміни назви черги
+          sendUpdateRequest();
+        },
+        error: function() {
+          // Обробка помилки запиту
+          console.log('Помилка запиту на зміну назви черги.');
+        }
+      });
+    });
+    <% } %>
+
+  </script>
+</body>
+</html>

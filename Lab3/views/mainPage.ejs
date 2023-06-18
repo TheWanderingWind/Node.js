@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Список черг</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <style>
+    .min-size {
+      min-height: 10px
+    }
+
+    .header-wrapper {
+    background-color: #f2f3c7; /* Задаємо фоновий колір контейнера */
+    max-width: 800px; /* Максимальна ширина контейнера */
+    margin: 0 auto;
+    padding: 20px; /* Відступи зовнішнього контейнера */
+    border-radius: 10px; /* закруглені кути */
+    }
+
+    .header {
+    width: 90%; /* Ширина контейнера */
+    max-width: 800px; /* Максимальна ширина контейнера */
+    margin: 0 auto; /* Центруємо контейнер по горизонталі */
+    padding: 10px; /* Відступи всередині контейнера */
+    }
+
+    /* Стилі для елементів, що відображаються в центрі */
+    .mid {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 90%;
+      max-width: 800px; /* Максимальна ширина контейнера */
+      margin: 0 auto;
+      border-radius: 10px; /* закруглені кути */
+      background-color: #E0F2F1; /* блідо-блакитний фон */
+    }
+
+    .mid-second {
+      display: block;
+      justify-content: flex-start;
+      width: 90%;
+      max-width: 800px; /* Максимальна ширина контейнера */
+      margin: 0 auto;
+      padding: 50;
+      border-radius: 10px; /* закруглені кути */
+      background-color: #E0F2F1; /* блідо-блакитний фон */
+    }
+
+    /* Стилі для елементів лівої сторони сторінки */
+    .list {
+      display: flex;
+      justify-content: flex-start;
+      width: 90%;
+      max-width: 800px; /* Максимальна ширина контейнера */
+      margin: 0 auto;
+      background-color: #F5F5F5; /* світло-сірий фон */
+      border-radius: 10px; /* закруглені кути */
+    }
+
+    /* Стилі для елементів зліва контейнера */
+    .li-0 {
+      background-color: #C8E6C9; /* світло-зелений фон */
+      border-radius: 5px; /* закруглені кути */
+      min-width: 300px
+    }
+    .li-1 {
+      background-color: #a5dfa7; /* світло-зелений фон */
+      border-radius: 5px; /* закруглені кути */
+      min-width: 300px
+    }
+
+  </style>
+  <script>
+    $(document).ready(function() {
+      // Заблокувати кнопку створення черги, поки поле з іменем не заповнене
+      $('#createQueueBtn').prop('disabled', true);
+
+      // Перевірка, чи поле з іменем не пусте
+      $('#clientName').on('input', function() {
+        if ($(this).val() !== '') {
+          $('#createQueueBtn').prop('disabled', false);
+        } else {
+          $('#createQueueBtn').prop('disabled', true);
+        }
+      });
+
+      // Обробник події для кнопки створення нової черги
+      $('#createQueueBtn').click(function() {
+        const clientName = $('#clientName').val();
+
+        // Створення нової черги
+        $.ajax({
+          url: '/create',
+          method: 'POST',
+          data: { userName: clientName },
+          success: function(response) {
+            console.log(response);
+            const queueId = response.data.id;            
+            const queueUrl = '/queue/' + queueId;
+
+            const queryString = Object.entries({
+              name: clientName,
+              sessionId: response.data.hostId
+            })
+            .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+            .join('&');
+
+            // Приєднання до черги
+            // Відкриття сторінки черги у новій вкладці
+            window.open(`${queueUrl}?${queryString}`, '_blank');
+          },
+          error: function(jqXHR, textStatus, errorThrown) {
+            console.log('Error:', errorThrown);
+          }
+        });
+      });
+
+      // Обробник події для елементів списку черг
+      $('.queue-item').click(function() {
+        const clientName = $('#clientName').val();
+        if (clientName === '') {
+          alert("Введіть своє ім'я!");
+          return;
+        }
+
+        const queueId = $(this).data('queue-id');
+
+        const queryString = Object.entries({
+              name: clientName,
+            })
+            .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+            .join('&');
+
+        window.open(`/queue/${queueId}?${queryString}`, '_blank');
+      });
+
+      function updateList() {
+        console.log('update')
+        $.ajax({
+          url: '/update',
+          method: 'POST',
+          success: function(response) {
+            console.log(response)
+            //update list
+            const list = document.getElementById('listUl')
+            list.innerHTML = '';
+            
+            console.log(response.queues.length)
+
+            for (let i = 0; i < response.queues.length; i++) {
+              const listElement = document.createElement('li');
+              listElement.textContent = `${response.queues[i].queueName}`;
+
+              listElement.dataset.queueШtem = response.queues[i].id;
+              if (i % 2 === 0) {
+                listElement.classList.add('li-0');
+              } else {
+                listElement.classList.add('li-1');
+              }
+
+              list.appendChild(listElement);
+              list.appendChild(listElement);
+            }
+          },
+          error: function(jqXHR, textStatus, errorThrown) {
+            console.log('Error:', errorThrown);
+          }
+        });
+      }
+
+      updateList();
+      // Періодична відправка запитів
+      setInterval(function() {
+        updateList();
+      }, 10000);
+    });
+  </script>
+</head>
+<body>
+  <div class="header-wrapper">
+    <h1>Головна сторінка</h1>
+  </div>
+
+  <div class="mid">
+    <label for="clientName">Ваше ім'я:</label>
+    <input type="text" id="clientName" name="clientName">
+    <button id="createQueueBtn">Створити нову чергу</button>
+  </div>
+  
+  <div class="list">
+    <h2>Існуючі черги:</h2>
+    <ul id="listUl">
+      <% for (let i=0; i < queues.length; i++) { %>
+        <% if (i%2 == 0) { %>
+          <li class="queue-item li-0" data-queue-id="<%= queues[i].id %>"><%= queues[i].queueName %></li>
+        <% } else { %>
+          <li class="queue-item li-1" data-queue-id="<%= queues[i].id %>"><%= queues[i].queueName %></li>
+        <% } %>
+      <% } %>
+    </ul>
+  </div>
+</body>
+</html>
